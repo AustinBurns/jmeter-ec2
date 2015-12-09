@@ -154,6 +154,72 @@ function runsetup() {
         echo
         echo
 
+        if [ -n "$ELB_NAME" ] ; then
+            if hash aws 2>/dev/null ; then
+                if [ ${#ELB_AVAILABILITY_ZONES[@]} -ne 0 ] | [ ${#ELB_SUBNETS[@]} -ne 0 ] ; then
+                    listeners=''
+                    security_groups=''
+                    scheme=''
+                    if [ -n "$ELB_LISTENERS" ] ; then listeners="--listeners ${ELB_LISTENERS[@]}";fi
+                    if [ -n "$ELB_SEC_GROUPS" ] ; then security_groups="--security-groups ${ELB_SEC_GROUPS[@]}"; fi
+                    if [ -n "$ELB_SCHEME" ] ; then scheme="--scheme $ELB_SCHEME"; fi
+
+                    echo "Creating the load balancer instance..."
+
+                    loadbalancer=(`aws elb create-load-balancer \
+                        --region $REGION \
+                        --load-balancer-name $ELB_NAME \
+                        $listeners \
+                        --availability-zones ${ELB_AVAILABILITY_ZONES[@]} \
+                        --subnets ${ELB_SUBNETS[@]} \
+                        $security_groups \
+                        $scheme \
+                        --tags "Key=Name,Value=Loadtest"`)
+                    if [ ${#loadbalancer[@]} -ne 0 ] ; then
+                        echo "Load Balancer successfully created. Load Balancer has been tagged as \"$ELB_NAME\"."
+
+                        if [ -n "$ASG_NAME" ] ; then
+                            echo
+                            echo "Attaching the newly created ELB to the Auto Scaling Group provided..."
+
+                            elb_attach_to_asg=(`aws autoscaling attach-load-balancers \
+                                --region $REGION \
+                                --auto-scaling-group-name $ASG_NAME \
+                                --load-balancer-name $ELB_NAME`)
+
+                            echo
+                            echo "The ELB has been successfully attached to ASG \"$ASG_NAME\"."
+                            exit
+                        fi
+                    else
+                        echo
+                        echo "The load balancer was not able to be created successfully."
+                        echo "Please check your settings in the jmeter-ec2.properties file."
+                        echo
+                        echo "Script exiting..."
+                        echo
+                        exit
+                    fi
+                else
+                    echo
+                    echo "You must specify at least either one Availability Zone or a Subnet ID for your Load Balance instance."
+                    echo "Please go back to the jmeter-ec2.properties file and add least either one Availability Zone or a Subnet ID."
+                    echo
+                    echo "Script exiting..."
+                    echo
+                    exit
+                fi
+            else
+                echo
+                echo "You must install the AWS CLI tools."
+                echo "Please go to http://aws.amazon.com/cli/ and install the AWS CLI tools."
+                echo
+                echo "Script exiting..."
+                echo
+                exit
+            fi
+        fi
+
         vpcsettings=""
 
         if [ -n "$SUBNET_ID" ] ; then vpcsettings="-s $SUBNET_ID --associate-public-ip-address \"true\""; fi
@@ -1118,5 +1184,3 @@ check_prereqs
 runsetup
 runtest
 runcleanup
-
-
