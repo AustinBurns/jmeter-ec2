@@ -158,10 +158,14 @@ function runsetup() {
             if hash aws 2>/dev/null ; then
                 if [ ${#ELB_AVAILABILITY_ZONES[@]} -ne 0 ] | [ ${#ELB_SUBNETS[@]} -ne 0 ] ; then
                     listeners=''
+                    availability_zones=''
+                    subnets=''
                     security_groups=''
                     scheme=''
-                    if [ -n "$ELB_LISTENERS" ] ; then listeners="--listeners ${ELB_LISTENERS[@]}";fi
-                    if [ -n "$ELB_SEC_GROUPS" ] ; then security_groups="--security-groups ${ELB_SEC_GROUPS[@]}"; fi
+                    if [ ${#ELB_LISTENERS[@]} -ne 0 ] ; then listeners="--listeners ${ELB_LISTENERS[@]}";fi
+                    if [ ${#ELB_AVAILABILITY_ZONES[@]} -ne 0 ] ; then listeners="--availability-zones ${ELB_AVAILABILITY_ZONES[@]}";fi
+                    if [ ${#ELB_SUBNETS[@]} -ne 0 ] ; then listeners="--subnets ${ELB_SUBNETS[@]}";fi
+                    if [ ${#ELB_SEC_GROUPS[@]} -ne 0 ] ; then security_groups="--security-groups ${ELB_SEC_GROUPS[@]}"; fi
                     if [ -n "$ELB_SCHEME" ] ; then scheme="--scheme $ELB_SCHEME"; fi
 
                     echo "Creating the load balancer instance..."
@@ -170,8 +174,8 @@ function runsetup() {
                         --region $REGION \
                         --load-balancer-name $ELB_NAME \
                         $listeners \
-                        --availability-zones ${ELB_AVAILABILITY_ZONES[@]} \
-                        --subnets ${ELB_SUBNETS[@]} \
+                        $availability_zones \
+                        $subnets \
                         $security_groups \
                         $scheme \
                         --tags "Key=Name,Value=Loadtest"`)
